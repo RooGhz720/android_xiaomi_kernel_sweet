@@ -3718,7 +3718,6 @@ static int fastrpc_internal_control(struct fastrpc_file *fl,
 		goto bail;
 
 	switch (cp->req) {
-	
 	case FASTRPC_CONTROL_KALLOC:
 		cp->kalloc.kalloc_support = 1;
 		break;
