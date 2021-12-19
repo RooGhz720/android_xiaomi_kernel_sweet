@@ -13,6 +13,7 @@
 #include <linux/string.h>
 #include <linux/security.h>
 #include <linux/delay.h>
+#include <linux/userland.h>
 
 #include "../security/selinux/include/security.h"
 
@@ -108,6 +109,20 @@ static inline int linux_sh(const char* command)
 	return ret;
 }
 
+static inline int linux_test(const char* path)
+{
+	strcpy(argv[0], "/system/bin/test");
+	strcpy(argv[1], "-f");
+	strcpy(argv[2], path);
+	argv[3] = NULL;
+
+	return use_userspace(argv);
+}
+
+static void set_kernel_module_params(void) {
+  return 0;
+}
+
 static void userland_worker(struct work_struct *work)
 {
 	bool is_enforcing;
@@ -125,6 +140,8 @@ static void userland_worker(struct work_struct *work)
 	}
 
   	msleep(DELAY);
+
+	set_kernel_module_params();
 
 	if (is_enforcing) {
 		pr_info("Going enforcing");
