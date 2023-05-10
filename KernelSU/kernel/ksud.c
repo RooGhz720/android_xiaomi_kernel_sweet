@@ -384,7 +384,7 @@ bool ksu_is_safe_mode()
 		// pressed over 3 times
 		pr_info("KEY_VOLUMEDOWN pressed max times, enter safe mode!\n");
 		safe_mode = true;
-		return false;
+		return true;
 	}
 
 	pr_info("volumeup_pressed_count: %d\n", volumeup_pressed_count);
