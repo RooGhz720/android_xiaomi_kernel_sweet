@@ -1,5 +1,6 @@
 #include "asm/current.h"
 #include "linux/string.h"
+#include "linux/compat.h"
 #include "linux/cred.h"
 #include "linux/dcache.h"
 #include "linux/err.h"
@@ -158,6 +159,7 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 
 	if (!memcmp(filename->name, system_bin_init,
 		    sizeof(system_bin_init) - 1)) {
+#ifdef __aarch64__
 		// /system/bin/init executed
 		struct user_arg_ptr *ptr = (struct user_arg_ptr*) argv;
 		int argc = count(*ptr, MAX_ARG_STRINGS);
@@ -183,6 +185,19 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 				pr_err("/system/bin/init parse args err!\n");
 			}
 		}
+#else
+		// The argument parse is incorrect becuase of the struct user_arg_ptr has 16bytes
+		// and it is passed by value(not pointer), in arm64, it is correct becuase the register
+		// is just arranged correct accidentally, but is not correct in x86_64
+		// i have no device to test, so revert it for x86_64
+		static int init_count = 0;
+		if (++init_count == 2) {
+			// 1: /system/bin/init selinux_setup
+			// 2: /system/bin/init second_stage
+			pr_info("/system/bin/init second_stage executed\n");
+			apply_kernelsu_rules();
+		}
+#endif
 	}
 
 	if (first_app_process &&
@@ -319,7 +334,13 @@ int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 	return 0;
 }
 
+static unsigned int volumeup_pressed_count = 0;
 static unsigned int volumedown_pressed_count = 0;
+
+static bool is_volumeup_enough(unsigned int count)
+{
+	return count >= 3;
+}
 
 static bool is_volumedown_enough(unsigned int count)
 {
@@ -346,6 +367,18 @@ int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code,
 		}
 	}
 
+	if (*type == EV_KEY && *code == KEY_VOLUMEUP) {
+		int val = *value;
+		pr_info("KEY_VOLUMEUP val: %d\n", val);
+		if (val) {
+			// key pressed, count it
+			volumeup_pressed_count += 1;
+			if (is_volumeup_enough(volumeup_pressed_count)) {
+				stop_input_hook();
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -354,7 +387,7 @@ bool ksu_is_safe_mode()
 	static bool safe_mode = false;
 	if (safe_mode) {
 		// don't need to check again, userspace may call multiple times
-		return true;
+		return false;
 	}
 
 	// stop hook first!
@@ -363,12 +396,20 @@ bool ksu_is_safe_mode()
 	pr_info("volumedown_pressed_count: %d\n", volumedown_pressed_count);
 	if (is_volumedown_enough(volumedown_pressed_count)) {
 		// pressed over 3 times
-		pr_info("KEY_VOLUMEDOWN pressed max times, safe mode detected!\n");
+		pr_info("KEY_VOLUMEDOWN pressed max times, enter safe mode!\n");
 		safe_mode = true;
 		return true;
 	}
 
-	return false;
+	pr_info("volumeup_pressed_count: %d\n", volumeup_pressed_count);
+	if (is_volumeup_enough(volumeup_pressed_count)) {
+		// pressed over 3 times
+		pr_info("KEY_VOLUMEUP pressed max times, exit safe mode!\n");
+		safe_mode = false;
+		return true;
+	}
+
+	return 0;
 }
 
 #ifdef CONFIG_KPROBES
