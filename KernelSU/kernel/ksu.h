@@ -3,7 +3,7 @@
 
 #include "linux/workqueue.h"
 
-#define KERNEL_SU_VERSION 10886
+#define KERNEL_SU_VERSION 10893
 
 #define KERNEL_SU_OPTION 0xDEADBEEF
 
