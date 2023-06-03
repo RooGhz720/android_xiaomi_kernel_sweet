@@ -186,7 +186,8 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 		if (userId == 0) {
 			prefix = "/data/data";
 		} else {
-			snprintf(prefixTmp, sizeof(prefixTmp), "/data/user/%d", userId);
+			snprintf(prefixTmp, sizeof(prefixTmp), "/data/user/%d",
+				 userId);
 			prefix = prefixTmp;
 		}
 
@@ -227,10 +228,6 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 			if (copy_to_user(result, &reply_ok, sizeof(reply_ok))) {
 				pr_err("grant_root: prctl reply error\n");
 			}
-		} else {
-			pr_info("deny root for: %d\n", current_uid());
-			// add it to deny list!
-			ksu_allow_uid(current_uid().val, false, true);
 		}
 		return 0;
 	}
@@ -325,6 +322,31 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 		return 0;
 	}
 
+	if (arg2 == CMD_IS_UID_GRANTED_ROOT ||
+	    arg2 == CMD_IS_UID_SHOULD_UMOUNT) {
+		if (is_manager() || 0 == current_uid().val) {
+			uid_t target_uid = (uid_t)arg3;
+			bool allow = false;
+			if (arg2 == CMD_IS_UID_GRANTED_ROOT) {
+				allow = ksu_is_allow_uid(target_uid);
+			} else if (arg2 == CMD_IS_UID_SHOULD_UMOUNT) {
+				allow = ksu_is_uid_should_umount(target_uid);
+			} else {
+				pr_err("unknown cmd: %d\n", arg2);
+			}
+			if (!copy_to_user(arg4, &allow, sizeof(allow))) {
+				if (copy_to_user(result, &reply_ok,
+						 sizeof(reply_ok))) {
+					pr_err("prctl reply error, cmd: %d\n",
+					       arg2);
+				}
+			} else {
+				pr_err("prctl copy err, cmd: %d\n", arg2);
+			}
+		}
+		return 0;
+	}
+
 	// all other cmds are for 'root manager'
 	if (!is_manager()) {
 		last_failed_uid = current_uid().val;
@@ -332,17 +354,39 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 	}
 
 	// we are already manager
-	if (arg2 == CMD_ALLOW_SU || arg2 == CMD_DENY_SU) {
-		bool allow = arg2 == CMD_ALLOW_SU;
-		bool success = false;
-		uid_t uid = (uid_t)arg3;
-		success = ksu_allow_uid(uid, allow, true);
+	if (arg2 == CMD_GET_APP_PROFILE) {
+		struct app_profile profile;
+		if (copy_from_user(&profile, arg3, sizeof(profile))) {
+			pr_err("copy profile failed\n");
+			return 0;
+		}
+
+		bool success = ksu_get_app_profile(&profile, false);
 		if (success) {
+			if (copy_to_user(arg3, &profile, sizeof(profile))) {
+				pr_err("copy profile failed\n");
+				return 0;
+			}
 			if (copy_to_user(result, &reply_ok, sizeof(reply_ok))) {
 				pr_err("prctl reply error, cmd: %d\n", arg2);
 			}
 		}
-		ksu_show_allow_list();
+		return 0;
+	}
+
+	if (arg2 == CMD_SET_APP_PROFILE) {
+		struct app_profile profile;
+		if (copy_from_user(&profile, arg3, sizeof(profile))) {
+			pr_err("copy profile failed\n");
+			return 0;
+		}
+
+		// todo: validate the params
+		if (ksu_set_app_profile(&profile, true)) {
+			if (copy_to_user(result, &reply_ok, sizeof(reply_ok))) {
+				pr_err("prctl reply error, cmd: %d\n", arg2);
+			}
+		}
 		return 0;
 	}
 
@@ -366,13 +410,19 @@ static bool should_umount(struct path *path)
 	}
 
 	if (current->nsproxy->mnt_ns == init_nsproxy.mnt_ns) {
-		pr_info("ignore global mnt namespace process: %d\n", current_uid().val);
+		pr_info("ignore global mnt namespace process: %d\n",
+			current_uid().val);
 		return false;
 	}
 
 	if (path->mnt && path->mnt->mnt_sb && path->mnt->mnt_sb->s_type) {
 		const char *fstype = path->mnt->mnt_sb->s_type->name;
-		return strcmp(fstype, "overlay") == 0;
+		if (strcmp(fstype, "overlay") == 0) {
+			return ksu_is_uid_should_umount(current_uid().val);
+		}
+#ifdef CONFIG_KSU_DEBUG
+		pr_info("uid: %d should not umount!\n")
+#endif
 	}
 	return false;
 }
