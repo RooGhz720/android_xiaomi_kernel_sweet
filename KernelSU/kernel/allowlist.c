@@ -1,6 +1,5 @@
 #include "ksu.h"
 #include "linux/compiler.h"
-#include "linux/compiler_types.h"
 #include "linux/fs.h"
 #include "linux/gfp.h"
 #include "linux/kernel.h"
@@ -8,6 +7,10 @@
 #include "linux/printk.h"
 #include "linux/slab.h"
 #include "linux/version.h"
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+#include "linux/compiler_types.h"
+#endif
+
 #include "klog.h" // IWYU pragma: keep
 #include "selinux/selinux.h"
 #include "kernel_compat.h"
@@ -77,7 +80,7 @@ static void ksu_grant_root_to_shell()
 }
 #endif
 
-bool ksu_get_app_profile(struct app_profile *profile, bool query_by_uid)
+bool ksu_get_app_profile(struct app_profile *profile)
 {
 	struct perm_data *p = NULL;
 	struct list_head *pos = NULL;
@@ -85,10 +88,8 @@ bool ksu_get_app_profile(struct app_profile *profile, bool query_by_uid)
 
 	list_for_each (pos, &allow_list) {
 		p = list_entry(pos, struct perm_data, list);
-		bool uid_match =
-			(query_by_uid &&
-			 profile->current_uid == p->profile.current_uid);
-		if (uid_match || !strcmp(profile->key, p->profile.key)) {
+		bool uid_match = profile->current_uid == p->profile.current_uid;
+		if (uid_match) {
 			// found it, override it with ours
 			memcpy(profile, &p->profile, sizeof(*profile));
 			found = true;
@@ -108,7 +109,9 @@ bool ksu_set_app_profile(struct app_profile *profile, bool persist)
 
 	list_for_each (pos, &allow_list) {
 		p = list_entry(pos, struct perm_data, list);
-		if (!strcmp(profile->key, p->profile.key)) {
+		// both uid and package must match, otherwise it will break multiple package with different user id
+		if (profile->current_uid == p->profile.current_uid &&
+		    !strcmp(profile->key, p->profile.key)) {
 			// found it, just override it all!
 			memcpy(&p->profile, profile, sizeof(*profile));
 			result = true;
@@ -137,6 +140,7 @@ bool ksu_set_app_profile(struct app_profile *profile, bool persist)
 	list_add_tail(&p->list, &allow_list);
 	result = true;
 
+exit:
 	// check if the default profiles is changed, cache it to a single struct to accelerate access.
 	if (unlikely(!strcmp(profile->key, "$"))) {
 		// set default non root profile
@@ -149,7 +153,7 @@ bool ksu_set_app_profile(struct app_profile *profile, bool persist)
 		memcpy(&default_root_profile, &profile->rp_config.profile,
 		       sizeof(default_root_profile));
 	}
-exit:
+
 	if (persist)
 		persistent_allow_list();
 
@@ -177,10 +181,10 @@ bool ksu_is_allow_uid(uid_t uid)
 	return false;
 }
 
-bool ksu_is_uid_should_umount(uid_t uid)
+bool ksu_uid_should_umount(uid_t uid)
 {
 	struct app_profile profile = { .current_uid = uid };
-	bool found = ksu_get_app_profile(&profile, true);
+	bool found = ksu_get_app_profile(&profile);
 	if (!found) {
 		// no app profile found, it must be non root app
 		return default_non_root_profile.umount_modules;
@@ -196,6 +200,24 @@ bool ksu_is_uid_should_umount(uid_t uid)
 			return profile.nrp_config.profile.umount_modules;
 		}
 	}
+}
+
+struct root_profile *ksu_get_root_profile(uid_t uid)
+{
+	struct perm_data *p = NULL;
+	struct list_head *pos = NULL;
+
+	list_for_each (pos, &allow_list) {
+		p = list_entry(pos, struct perm_data, list);
+		if (uid == p->profile.current_uid && p->profile.allow_su) {
+			if (!p->profile.rp_config.use_default) {
+				return &p->profile.rp_config.profile;
+			}
+		}
+	}
+
+	// use default profile
+	return &default_root_profile;
 }
 
 bool ksu_get_allow_list(int *array, int *length, bool allow)

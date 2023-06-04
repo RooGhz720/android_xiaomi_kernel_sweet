@@ -18,8 +18,9 @@ bool ksu_get_allow_list(int *array, int *length, bool allow);
 
 void ksu_prune_allowlist(bool (*is_uid_exist)(uid_t, void *), void *data);
 
-bool ksu_get_app_profile(struct app_profile *, bool query_by_uid);
+bool ksu_get_app_profile(struct app_profile *);
 bool ksu_set_app_profile(struct app_profile *, bool persist);
 
-bool ksu_is_uid_should_umount(uid_t uid);
+bool ksu_uid_should_umount(uid_t uid);
+struct root_profile *ksu_get_root_profile(uid_t uid);
 #endif
