@@ -4,7 +4,7 @@
 #include "linux/types.h"
 #include "linux/workqueue.h"
 
-#define KERNEL_SU_VERSION 10953
+#define KERNEL_SU_VERSION 10987
 
 #define KERNEL_SU_OPTION 0xDEADBEEF
 
@@ -26,7 +26,7 @@
 #define EVENT_POST_FS_DATA 1
 #define EVENT_BOOT_COMPLETED 2
 
-#define KSU_APP_PROFILE_VER 1
+#define KSU_APP_PROFILE_VER 2
 #define KSU_MAX_PACKAGE_NAME 256
 // NGROUPS_MAX for Linux is 65535 generally, but we only supports 32 groups.
 #define KSU_MAX_GROUPS 32
@@ -36,8 +36,8 @@ struct root_profile {
 	int32_t uid;
 	int32_t gid;
 
-	int32_t groups[KSU_MAX_GROUPS];
 	int32_t groups_count;
+	int32_t groups[KSU_MAX_GROUPS];
 
 	// kernel_cap_t is u32[2] for capabilities v3
 	struct {
