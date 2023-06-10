@@ -25,6 +25,7 @@
 #include <linux/pwm.h>
 #include <linux/err.h>
 #include <linux/string.h>
+#include <misc/aghisna_panel.h>
 
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
@@ -2845,12 +2846,21 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	if (mdss_dsi_is_hw_config_split(ctrl_pdata->shared_data))
 		pinfo->is_split_display = true;
 
-	rc = of_property_read_u32(np,
-		"qcom,mdss-pan-physical-width-dimension", &tmp);
-	pinfo->physical_width = (!rc ? tmp : 0);
-	rc = of_property_read_u32(np,
-		"qcom,mdss-pan-physical-height-dimension", &tmp);
-	pinfo->physical_height = (!rc ? tmp : 0);
+	if (jenis_dimensi){
+		rc = of_property_read_u32(np,
+			"qcom,mdss-pan-physical-width-dimension-miui", &tmp);
+		pinfo->physical_width = (!rc ? tmp : 0);
+		rc = of_property_read_u32(np,
+			"qcom,mdss-pan-physical-height-dimension-miui", &tmp);
+		pinfo->physical_height = (!rc ? tmp : 0);
+	} else {
+		rc = of_property_read_u32(np,
+			"qcom,mdss-pan-physical-width-dimension", &tmp);
+		pinfo->physical_width = (!rc ? tmp : 0);
+		rc = of_property_read_u32(np,
+			"qcom,mdss-pan-physical-height-dimension", &tmp);
+		pinfo->physical_height = (!rc ? tmp : 0);
+	}
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-bpp", &tmp);
 	if (rc) {
