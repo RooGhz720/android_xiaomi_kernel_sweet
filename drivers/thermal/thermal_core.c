@@ -82,8 +82,8 @@ static struct thermal_governor *def_governor;
 
 static struct workqueue_struct *thermal_passive_wq;
 
-static int lock_enable = 0;
-static int lock_sconfig = -1;
+static int lock_enable = 1;
+static int lock_sconfig = 2;
 module_param(lock_enable, int, 0644);
 module_param(lock_sconfig, int, 0644);
 
