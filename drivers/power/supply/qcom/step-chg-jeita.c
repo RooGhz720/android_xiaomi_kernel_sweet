@@ -14,6 +14,7 @@
 
 #include <linux/delay.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/of.h>
 #include <linux/of_batterydata.h>
 #include <linux/power_supply.h>
@@ -100,6 +101,12 @@ struct step_chg_info {
 };
 
 static struct step_chg_info *the_chip;
+
+/* aghisna config */
+static int BATT_MAX_TEMP = 430;
+static int FFC_MAX_TEMP = 390;
+module_param(BATT_MAX_TEMP, int, 0644);
+module_param(FFC_MAX_TEMP, int, 0644);
 
 #define STEP_CHG_HYSTERISIS_DELAY_US		5000000 /* 5 secs */
 
@@ -892,13 +899,13 @@ static int handle_jeita(struct step_chg_info *chip)
 						POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
 				chg_term_current = pval.intval;
 				if ((chg_term_current == FFC_LOW_TEMP_CHG_TERM_CURRENT)
-					&& (batt_temp > FFC_CHG_TERM_TEMP_THRESHOLD + 10)) {
+					&& (batt_temp > FFC_MAX_TEMP + 10)) {
 						chg_term_current = FFC_HIGH_TEMP_CHG_TERM_CURRENT;
 						pval.intval = chg_term_current;
 						rc = power_supply_set_property(chip->batt_psy,
 							POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT, &pval);
 				} else if ((chg_term_current == FFC_HIGH_TEMP_CHG_TERM_CURRENT)
-					&& (batt_temp < FFC_CHG_TERM_TEMP_THRESHOLD - 10)) {
+					&& (batt_temp < FFC_MAX_TEMP - 10)) {
 						chg_term_current = FFC_LOW_TEMP_CHG_TERM_CURRENT;
 						pval.intval = chg_term_current;
 						rc = power_supply_set_property(chip->batt_psy,
@@ -940,7 +947,7 @@ static int handle_jeita(struct step_chg_info *chip)
 					|| (pval.intval == HVDCP3P5_CLASS_A_18W)
 					|| (pval.intval == HVDCP3P5_CLASS_B_27W)
 					|| (pd_authen_result == 1)) {
-			if ((temp >= BATT_WARM_THRESHOLD || temp <= BATT_COOL_THRESHOLD)
+			if ((temp >= BATT_MAX_TEMP || temp <= BATT_COOL_THRESHOLD)
 						&& !fast_mode_dis) {
 				pr_err("temp:%d disable fastcharge mode\n", temp);
 				pval.intval = false;
@@ -951,7 +958,7 @@ static int handle_jeita(struct step_chg_info *chip)
 					return rc;
 				}
 				fast_mode_dis = true;
-			} else if ((temp < BATT_WARM_THRESHOLD - chip->jeita_fv_config->param.hysteresis)
+			} else if ((temp < BATT_MAX_TEMP - chip->jeita_fv_config->param.hysteresis)
 						&& (temp > BATT_COOL_THRESHOLD + chip->jeita_fv_config->param.hysteresis)
 							&& fast_mode_dis) {
 				pr_err("temp:%d enable fastcharge mode\n", temp);
@@ -995,7 +1002,7 @@ static int handle_jeita(struct step_chg_info *chip)
 		curr_vbat_uv = pval.intval;
 
 		if (!chip->six_pin_battery) {
-			if ((curr_vbat_uv > fv_uv) && (temp >= BATT_WARM_THRESHOLD))
+			if ((curr_vbat_uv > fv_uv) && (temp >= BATT_MAX_TEMP))
 				vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
 			else if (curr_vbat_uv < (fv_uv - JEITA_SUSPEND_HYST_UV))
 				vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
