@@ -1,4 +1,4 @@
-name: Aghisna MIUI
+name: Aghisna Testing
 on:
   workflow_dispatch:
 
@@ -21,9 +21,9 @@ jobs:
           libghc-libyaml-dev libyaml-dev glibc-source \
     - name: ready compile...
       run: |
-          curl https://raw.githubusercontent.com/RooGhz720/RooGhz720/main/nonrx/miui.sh > miui.sh
-          chmod +x miui.sh
-          bash miui.sh
+          curl https://raw.githubusercontent.com/RooGhz720/RooGhz720/main/nonrx/ossT.sh > ossT.sh
+          chmod +x ossT.sh
+          bash ossT.sh
       shell: bash
       env:
          CHATID: ${{ secrets.CHAT_ID }}
