@@ -31,7 +31,7 @@
 #include <drm/drm_mode.h>
 #include <drm/drm_print.h>
 #include <linux/sync_file.h>
-
+#include <linux/devfreq_boost.h>
 #include "drm_crtc_internal.h"
 
 void __drm_crtc_commit_free(struct kref *kref)
