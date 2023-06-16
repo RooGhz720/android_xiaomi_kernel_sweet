@@ -17,10 +17,11 @@
 #include <linux/slab.h>
 #include <trace/events/power.h>
 #include <linux/sched/sysctl.h>
-#include <linux/battery_saver.h>
 #include "sched.h"
 
 #define SUGOV_KTHREAD_PRIORITY	50
+
+extern int kp_active_mode(void);
 
 struct sugov_tunables {
 	struct gov_attr_set attr_set;
@@ -319,7 +320,7 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu,
 static void sugov_set_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
 				   unsigned int flags)
 {
-	if (is_battery_saver_on())
+	if (kp_active_mode() == 1)
 		return;
 
 	/* Clear iowait_boost if the CPU apprears to have been idle. */

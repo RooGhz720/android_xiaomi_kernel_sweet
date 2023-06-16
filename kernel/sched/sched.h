@@ -32,7 +32,6 @@
 #include <linux/irq_work.h>
 #include <linux/tick.h>
 #include <linux/slab.h>
-#include <linux/battery_saver.h>
 
 #ifdef CONFIG_PARAVIRT
 #include <asm/paravirt.h>
@@ -50,6 +49,8 @@
 
 struct rq;
 struct cpuidle_state;
+
+extern int kp_active_mode(void);
 
 extern __read_mostly bool sched_predl;
 extern unsigned int sched_capacity_margin_up[NR_CPUS];
@@ -2872,7 +2873,7 @@ static inline enum sched_boost_policy sched_boost_policy(void)
 extern unsigned int sched_boost_type;
 static inline int sched_boost(void)
 {
-	return unlikely(is_battery_saver_on()) ? 0 : sched_boost_type;
+	return unlikely(kp_active_mode() == 3) ? 3 : sched_boost_type;
 }
 
 extern int preferred_cluster(struct sched_cluster *cluster,

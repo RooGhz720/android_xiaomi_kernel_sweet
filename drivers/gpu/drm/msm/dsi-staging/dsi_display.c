@@ -19,7 +19,6 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/err.h>
-#include <linux/battery_saver.h>
 #include <linux/msm_drm_notify.h>
 
 #include "msm_drv.h"
@@ -49,6 +48,8 @@
 
 #define DSI_CLOCK_BITRATE_RADIX 10
 #define MAX_TE_SOURCE_ID  2
+
+extern int kp_active_mode(void);
 
 DEFINE_MUTEX(dsi_display_clk_mutex);
 
@@ -7909,7 +7910,7 @@ int dsi_display_pre_commit(void *display,
 
 unsigned int dsi_panel_get_refresh_rate(void)
 {
-	return unlikely(is_battery_saver_on()) ? 60 : READ_ONCE(cur_refresh_rate);
+	return unlikely(kp_active_mode() == 3) ? 3 : READ_ONCE(cur_refresh_rate);
 }
 
 int dsi_display_enable(struct dsi_display *display)
