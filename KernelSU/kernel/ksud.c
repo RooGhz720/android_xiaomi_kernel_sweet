@@ -52,9 +52,9 @@ static struct work_struct stop_vfs_read_work;
 static struct work_struct stop_execve_hook_work;
 static struct work_struct stop_input_hook_work;
 #else
-static bool vfs_read_hook = true;
-static bool execveat_hook = true;
-static bool input_hook = true;
+bool ksu_vfs_read_hook __read_mostly = true;
+bool ksu_execveat_hook __read_mostly = true;
+bool ksu_input_hook __read_mostly = true;
 #endif
 
 void on_post_fs_data(void)
@@ -108,7 +108,7 @@ static const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
 /*
  * count() counts the number of strings in array ARGV.
  */
-static int count(struct user_arg_ptr argv, int max)
+static int count(struct user_arg_ptr argv, int max) __maybe_unused
 {
 	int i = 0;
 
@@ -138,7 +138,7 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 			     void *argv, void *envp, int *flags)
 {
 #ifndef CONFIG_KPROBES
-	if (!execveat_hook) {
+	if (!ksu_execveat_hook) {
 		return 0;
 	}
 #endif
@@ -157,8 +157,8 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 		return 0;
 	}
 
-	if (!memcmp(filename->name, system_bin_init,
-		    sizeof(system_bin_init) - 1)) {
+	if (unlikely(!memcmp(filename->name, system_bin_init,
+		    sizeof(system_bin_init) - 1))) {
 #ifdef __aarch64__
 		// /system/bin/init executed
 		struct user_arg_ptr *ptr = (struct user_arg_ptr*) argv;
@@ -200,8 +200,8 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 #endif
 	}
 
-	if (first_app_process &&
-	    !memcmp(filename->name, app_process, sizeof(app_process) - 1)) {
+	if (unlikely(first_app_process &&
+	    !memcmp(filename->name, app_process, sizeof(app_process) - 1))) {
 		first_app_process = false;
 		pr_info("exec app_process, /data prepared, second_stage: %d\n", init_second_stage_executed);
 		on_post_fs_data(); // we keep this for old ksud
@@ -244,7 +244,7 @@ int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 			size_t *count_ptr, loff_t **pos)
 {
 #ifndef CONFIG_KPROBES
-	if (!vfs_read_hook) {
+	if (!ksu_vfs_read_hook) {
 		return 0;
 	}
 #endif
@@ -334,13 +334,7 @@ int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 	return 0;
 }
 
-static unsigned int volumeup_pressed_count = 0;
 static unsigned int volumedown_pressed_count = 0;
-
-static bool is_volumeup_enough(unsigned int count)
-{
-	return count >= 3;
-}
 
 static bool is_volumedown_enough(unsigned int count)
 {
@@ -351,7 +345,7 @@ int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code,
 				  int *value)
 {
 #ifndef CONFIG_KPROBES
-	if (!input_hook) {
+	if (!ksu_input_hook) {
 		return 0;
 	}
 #endif
@@ -367,18 +361,6 @@ int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code,
 		}
 	}
 
-	if (*type == EV_KEY && *code == KEY_VOLUMEUP) {
-		int val = *value;
-		pr_info("KEY_VOLUMEUP val: %d\n", val);
-		if (val) {
-			// key pressed, count it
-			volumeup_pressed_count += 1;
-			if (is_volumeup_enough(volumeup_pressed_count)) {
-				stop_input_hook();
-			}
-		}
-	}
-
 	return 0;
 }
 
@@ -387,7 +369,7 @@ bool ksu_is_safe_mode()
 	static bool safe_mode = false;
 	if (safe_mode) {
 		// don't need to check again, userspace may call multiple times
-		return false;
+		return true;
 	}
 
 	// stop hook first!
@@ -396,20 +378,12 @@ bool ksu_is_safe_mode()
 	pr_info("volumedown_pressed_count: %d\n", volumedown_pressed_count);
 	if (is_volumedown_enough(volumedown_pressed_count)) {
 		// pressed over 3 times
-		pr_info("KEY_VOLUMEDOWN pressed max times, enter safe mode!\n");
+		pr_info("KEY_VOLUMEDOWN pressed max times, safe mode detected!\n");
 		safe_mode = true;
 		return true;
 	}
 
-	pr_info("volumeup_pressed_count: %d\n", volumeup_pressed_count);
-	if (is_volumeup_enough(volumeup_pressed_count)) {
-		// pressed over 3 times
-		pr_info("KEY_VOLUMEUP pressed max times, exit safe mode!\n");
-		safe_mode = false;
-		return true;
-	}
-
-	return 0;
+	return false;
 }
 
 #ifdef CONFIG_KPROBES
@@ -489,7 +463,7 @@ static void stop_vfs_read_hook()
 	bool ret = schedule_work(&stop_vfs_read_work);
 	pr_info("unregister vfs_read kprobe: %d!\n", ret);
 #else
-	vfs_read_hook = false;
+	ksu_vfs_read_hook = false;
 #endif
 }
 
@@ -499,7 +473,7 @@ static void stop_execve_hook()
 	bool ret = schedule_work(&stop_execve_hook_work);
 	pr_info("unregister execve kprobe: %d!\n", ret);
 #else
-	execveat_hook = false;
+	ksu_execveat_hook = false;
 #endif
 }
 
@@ -514,7 +488,7 @@ static void stop_input_hook()
 	bool ret = schedule_work(&stop_input_hook_work);
 	pr_info("unregister input kprobe: %d!\n", ret);
 #else
-	input_hook = false;
+	ksu_input_hook = false;
 #endif
 }
 
