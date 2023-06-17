@@ -356,7 +356,7 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
 
 // KernelSU hook
 extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
-			        int *flags);
+			 int *flags);
 
 /*
  * access() needs to use the real uid/gid, not the effective uid/gid.
