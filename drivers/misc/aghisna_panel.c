@@ -21,6 +21,7 @@
 #include <misc/aghisna_panel.h>
 
 bool __read_mostly jenis_dimensi = false;
+module_param(jenis_dimensi, bool, 0644);
 
 static int __init read_old_mdsi(char *s)
 {
