@@ -18,32 +18,17 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <misc/aghisna_panel.h>
+#include <misc/aghisna_gpu.h>
 
-bool __read_mostly jenis_dimensi = false;
-module_param(jenis_dimensi, bool, 0644);
-
-static int __init read_old_mdsi(char *s)
-{
-    int status;
-	if (s)
-		status = simple_strtoul(s, NULL, 0);
-
-	if ( status > 0 ) {
-		jenis_dimensi = true;
-	} else {
-		jenis_dimensi = false;
-	}
-	return 1;
-}
-__setup("aghisna.dimen=", read_old_mdsi);
+bool __read_mostly kgsl_thermal_limit = 0;
+module_param(kgsl_thermal_limit, bool, 0644);
 
 static int __init prepare_driver_init(void) {
- printk(KERN_INFO "aghisna display initialized");
+ printk(KERN_INFO "aghisna gpu initialized");
  return 0;
 }
 static void __exit prepare_driver_exit(void) {
- printk(KERN_INFO "aghisna display exit");
+ printk(KERN_INFO "aghisna gpu exit");
 }
 
 module_init(prepare_driver_init);

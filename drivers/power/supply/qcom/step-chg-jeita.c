@@ -103,8 +103,8 @@ struct step_chg_info {
 static struct step_chg_info *the_chip;
 
 /* aghisna config */
-static int BATT_MAX_TEMP = 430;
-static int FFC_MAX_TEMP = 390;
+static int BATT_MAX_TEMP = 420;
+static int FFC_MAX_TEMP = 370;
 module_param(BATT_MAX_TEMP, int, 0644);
 module_param(FFC_MAX_TEMP, int, 0644);
 
