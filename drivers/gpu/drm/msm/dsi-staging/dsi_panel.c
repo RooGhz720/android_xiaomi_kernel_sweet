@@ -4279,7 +4279,7 @@ static DEVICE_ATTR(msm_fb_ea_enable, S_IRUGO | S_IWUSR,
 	dsi_panel_get_ea_enable, dsi_panel_set_ea_enable);
 
 static struct attribute *mdss_fb_attrs[] = {
-	&dev_attr_ea_enable.attr,
+	&dev_attr_msm_fb_ea_enable.attr,
 	NULL,
 };
 
