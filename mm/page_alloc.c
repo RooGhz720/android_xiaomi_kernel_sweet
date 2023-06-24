@@ -4093,6 +4093,7 @@ check_retry_cpuset(int cpuset_mems_cookie, struct alloc_context *ac)
 	return false;
 }
 
+extern int kp_active_mode(void);
 static inline struct page *
 __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 						struct alloc_context *ac)
@@ -4205,7 +4206,10 @@ retry:
 		wake_all_kswapds(order, ac);
 		
 	/* Boost when memory is low so allocation latency doesn't get too bad */
-	devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 100);
+	/* Dont boost page alloc if battery saver profile is enabled */
+	if (kp_active_mode() == 3) {
+	    devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+	  }
 
 	reserve_flags = __gfp_pfmemalloc_flags(gfp_mask);
 	if (reserve_flags)
