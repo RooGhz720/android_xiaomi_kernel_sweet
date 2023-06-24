@@ -19,7 +19,6 @@
 #include <linux/shmem_fs.h>
 #include <linux/uaccess.h>
 #include <linux/ctype.h>
-#include <linux/cpu_input_boost.h>
 
 #include <asm/elf.h>
 #include <asm/tlb.h>
@@ -224,8 +223,6 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 	mm = priv->mm;
 	if (!mm || !mmget_not_zero(mm))
 		return NULL;
-		
-	cpu_input_boost_kick();
 
 	down_read(&mm->mmap_sem);
 	hold_task_mempolicy(priv);
