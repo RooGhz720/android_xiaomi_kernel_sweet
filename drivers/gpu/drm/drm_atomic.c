@@ -2204,6 +2204,7 @@ static void complete_crtc_signaling(struct drm_device *dev,
 	kfree(fence_state);
 }
 
+extern int kp_active_mode(void);
 int drm_mode_atomic_ioctl(struct drm_device *dev,
 			  void *data, struct drm_file *file_priv)
 {
@@ -2248,8 +2249,12 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 		return -EINVAL;
 
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
-		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
-
+	  /*
+	   * Dont boost CPU & DDR if battery saver profile is enabled
+	   */
+	  if (kp_active_mode() == 3) {
+	    devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+	  }
 	}
 
 	drm_modeset_acquire_init(&ctx, 0);
