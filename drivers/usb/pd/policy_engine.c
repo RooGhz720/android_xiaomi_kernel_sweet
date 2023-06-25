@@ -2709,7 +2709,6 @@ enable_reg:
 	if (!pd->vbus) {
 		pd->vbus = devm_regulator_get(pd->dev.parent, "vbus");
 		if (IS_ERR(pd->vbus)) {
-			pd->vbus = NULL;
 			usbpd_err(&pd->dev, "Unable to get vbus\n");
 			return -EAGAIN;
 		}
@@ -3410,7 +3409,6 @@ static void usbpd_sm(struct work_struct *w)
 			memcpy(&pd->src_cap_ext_db, rx_msg->payload,
 				sizeof(pd->src_cap_ext_db));
 			complete(&pd->is_ready);
-			break;
 		} else if (IS_EXT(rx_msg, MSG_PPS_STATUS)) {
 			if (rx_msg->data_len != sizeof(pd->pps_status_db)) {
 				usbpd_err(&pd->dev, "Invalid pps status db\n");
@@ -3419,7 +3417,6 @@ static void usbpd_sm(struct work_struct *w)
 			memcpy(&pd->pps_status_db, rx_msg->payload,
 				sizeof(pd->pps_status_db));
 			complete(&pd->is_ready);
-			break;
 		} else if (IS_EXT(rx_msg, MSG_STATUS)) {
 			if (rx_msg->data_len != PD_STATUS_DB_LEN) {
 				usbpd_err(&pd->dev, "Invalid status db\n");
@@ -3429,7 +3426,6 @@ static void usbpd_sm(struct work_struct *w)
 				sizeof(pd->status_db));
 			kobject_uevent(&pd->dev.kobj, KOBJ_CHANGE);
 			complete(&pd->is_ready);
-			break;
 		} else if (IS_EXT(rx_msg, MSG_BATTERY_CAPABILITIES)) {
 			if (rx_msg->data_len != PD_BATTERY_CAP_DB_LEN) {
 				usbpd_err(&pd->dev, "Invalid battery cap db\n");
@@ -3438,7 +3434,6 @@ static void usbpd_sm(struct work_struct *w)
 			memcpy(&pd->battery_cap_db, rx_msg->payload,
 				sizeof(pd->battery_cap_db));
 			complete(&pd->is_ready);
-			break;
 		} else if (IS_EXT(rx_msg, MSG_BATTERY_STATUS)) {
 			if (rx_msg->data_len != sizeof(pd->battery_sts_dobj)) {
 				usbpd_err(&pd->dev, "Invalid bat sts dobj\n");
@@ -3447,7 +3442,6 @@ static void usbpd_sm(struct work_struct *w)
 			memcpy(&pd->battery_sts_dobj, rx_msg->payload,
 				sizeof(pd->battery_sts_dobj));
 			complete(&pd->is_ready);
-			break;
 		} else if (IS_CTRL(rx_msg, MSG_GET_SOURCE_CAP_EXTENDED)) {
 			handle_get_src_cap_extended(pd);
 		} else if (IS_EXT(rx_msg, MSG_GET_BATTERY_CAP)) {
@@ -5044,10 +5038,6 @@ static void usbpd_mi_connect_cb(struct usbpd_svid_handler *hdlr, bool peer_usb_c
 	struct usbpd *pd;
 
 	pd = container_of(hdlr, struct usbpd, svid_handler);
-	if(!pd) {
-		pr_err("get_usbpd phandle failed\n");
-		return;
-	}
 
 	pd->uvdm_state = USBPD_UVDM_CONNECT;
 	usbpd_info(&pd->dev, "hdlr->svid:%x has connect, support peer_usb_comm = %d\n", hdlr->svid, peer_usb_comm);
@@ -5059,10 +5049,6 @@ static void usbpd_mi_disconnect_cb(struct usbpd_svid_handler *hdlr)
 	struct usbpd *pd;
 
 	pd = container_of(hdlr, struct usbpd, svid_handler);
-	if(!pd) {
-		pr_err("get_usbpd phandle failed\n");
-		return;
-	}
 
 	pd->adapter_id = 0;
 	pd->adapter_svid = 0;
@@ -5083,11 +5069,6 @@ static void usbpd_mi_vdm_received_cb(struct usbpd_svid_handler *hdlr, u32 vdm_hd
 	int ret;
 
 	pd = container_of(hdlr, struct usbpd, svid_handler);
-	if(!pd) {
-		pr_err("get_usbpd phandle failed\n");
-		return;
-	}
-
 	cmd = UVDM_HDR_CMD(vdm_hdr);
 
 	usbpd_dbg(&pd->dev, "hdlr->svid:0x%04x, vdm_hdr:0x%08x, num_vdos:%d, cmd:%d\n", hdlr->svid, vdm_hdr, num_vdos, cmd);
